@@ -14,6 +14,7 @@ URL = f"https://clovastudio.stream.ntruss.com/testapp/v3/chat-completions/{MODEL
 NAVER_CLIENT_ID = os.getenv("NAVER_CLIENT_ID")
 NAVER_CLIENT_SECRET = os.getenv("NAVER_CLIENT_SECRET")
 
+# 1. 모델에 요청 보내기
 def sendInputAndFunctionDefinition(messages, temperature=0.3, top_p=0.8, max_tokens=1024, top_k=0, repeat_penalty=1.1):
     """HCX 모델에 요청을 보내는 함수 (항상 tools 포함)"""
     headers = {
@@ -77,7 +78,7 @@ def sendInputAndFunctionDefinition(messages, temperature=0.3, top_p=0.8, max_tok
     response = requests.post(URL, headers=headers, json=data)
     return response.json()
 
-# 네이버 쇼핑 API
+# 2. 네이버 쇼핑 API에 요청 보내기
 def get_search_naver_shopping(query, display=None, start=None, sort=None, filter=None, exclude=None):
     """네이버 쇼핑 검색 API를 호출하는 함수"""
     api_url = "https://openapi.naver.com/v1/search/shop.json"
@@ -103,6 +104,7 @@ def get_search_naver_shopping(query, display=None, start=None, sort=None, filter
     else:
         return {"error": response.status_code, "message": response.text}
 
+# API 응답 받은 후 실행 여부 결정
 def invokeFunctionFromResponse(function_to_call, user_prompt, display=None, start=None, sort=None):
     """모델 응답을 분석하고 적절한 함수 호출 또는 일반 텍스트 응답을 처리"""
 
@@ -157,6 +159,7 @@ def invokeFunctionFromResponse(function_to_call, user_prompt, display=None, star
             "used_tool": False
         }
 
+# 3. 최종 응답을 위한 모델에 요청 보내기
 def sendFunctionResult(messages, temperature=0.3, top_p=0.8, max_tokens=1024, top_k=0, repeat_penalty=1.1):
     """API 결과로 최종 답변 생성"""
     headers = {
@@ -189,8 +192,8 @@ def safe_json_dumps(obj):
 
 
 # Streamlit UI 설정
-st.set_page_config(page_title="HyperCLOVA X 멀티모달 쇼핑 Assistant", layout="wide")
-st.title("🛍️ HyperCLOVA X + 멀티모달 쇼핑 도우미")
+st.set_page_config(page_title="HyperCLOVA X 쇼핑 도우미", layout="wide")
+st.title("🛍️ HyperCLOVA X 쇼핑 도우미")
 
 # 세션 상태 초기화
 if "messages" not in st.session_state:
@@ -250,10 +253,10 @@ if prompt:
             })
 
 
-            st.write("messages:")
+            st.write("0 단계: 사용자 질문 (system, user, assistant 포함):")
             st.write(messages)
             function_to_call = sendInputAndFunctionDefinition(messages, temperature, top_p, max_tokens, top_k, repeat_penalty)
-            st.write("function_to_call:")
+            st.write("1 단계: 함수 정의 및 선택된 도구:")
             st.write(function_to_call)
 
             # toolCalls 존재 여부 확인
@@ -264,14 +267,14 @@ if prompt:
             if tool_calls:
                 # 2단계: 응답 처리 및 쇼핑 API 호출
                 function_result = invokeFunctionFromResponse(function_to_call, prompt, display, start, sort)
-                st.write("function_result:")
+                st.write("2 단계: API 요청 및 응답 처리:")
                 st.write(function_result)
 
                 shopping_result = function_result.get("shopping_result", {})
-                st.write("shopping_result:")
+                st.write("2 단계: API 요청에 대한 응답 값:")
                 st.write(shopping_result)
                 used_tool = function_result.get("used_tool", False)
-                st.write("used_tool:")
+                st.write("사용된 도구 (Tools):")
                 st.write(used_tool)
 
                 # 3단계: 쇼핑 결과 표시
@@ -307,8 +310,8 @@ if prompt:
 
                 # 5단계: 최종 응답 생성 및 표시
                 final_result = sendFunctionResult(messages, temperature, top_p, max_tokens, top_k, repeat_penalty)
-                st.write(final_result)
                 final_result_content = final_result.get("result", {}).get("message", {}).get("content", "검색 결과입니다.")
+                st.write("3 단계: 모델의 최종 응답 값:")
                 st.write(final_result_content)
 
 
